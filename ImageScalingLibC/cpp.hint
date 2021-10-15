@@ -1,0 +1,2 @@
+#define IMAGESCALINGLIBC_API __declspec(dllexport)
+#define IMAGESCALINGLIBC_API __declspec(dllimport)

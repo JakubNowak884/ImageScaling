@@ -1,0 +1,10 @@
+# result folder
+*.vs
+**/Debug
+**/x64
+**/ImageScaling/Debug
+**/ImageScaling/x64
+**/ImageScalingLibASM/Debug
+**/ImageScalingLibASM/x64
+**/ImageScalingLibC/Debug
+**/ImageScalingLibC/x64
