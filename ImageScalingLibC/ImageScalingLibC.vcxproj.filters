@@ -30,6 +30,9 @@
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ImageScalingC.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ImageScalingLibC.cpp">
@@ -41,7 +44,7 @@
     <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ImageScalingC.cpp">
+    <ClCompile Include="ImageScalingC.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

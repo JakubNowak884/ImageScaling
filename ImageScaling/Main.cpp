@@ -52,7 +52,7 @@ bool LoadAndBlitBitmap(LPCWSTR szFileName, HDC hWinDC)
         ::MessageBox(NULL, L"Nie uda³o siê za³adowaæ obrazu", L"Error", MB_OK);
         return false;
     }
-
+    
     //Create a device context that is compatible with the window
     HDC hLocalDC;
     hLocalDC = ::CreateCompatibleDC(hWinDC);
@@ -108,7 +108,7 @@ void scaleImage()
     //LPFNDLLFUNC lpfnDllFunc1;
     if (hinstLib != NULL)
     {
-        ProcAdd = (MYPROC)GetProcAddress(hinstLib, "scaleImage2");
+        ProcAdd = (MYPROC)GetProcAddress(hinstLib, "scaleImage");
 
         // If the function address is valid, call the function.
 
