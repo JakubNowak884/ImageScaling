@@ -1,3 +1,0 @@
-LIBRARY ImageScalingLibC
-EXPORTS
-scaleImage

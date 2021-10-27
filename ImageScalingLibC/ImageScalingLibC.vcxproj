@@ -156,7 +156,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
-    <None Include="ImageScalingC.def" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />

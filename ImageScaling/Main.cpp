@@ -1,14 +1,28 @@
+#pragma warning(disable: 4996)
+#pragma warning(disable:26451)
+
 #ifndef UNICODE
 #define UNICODE
-#endif 
+#endif
 
 #include <windows.h>
 #include <string>
+#include <thread>
 #include <CommCtrl.h>
+
+#define DATA_OFFSET_OFFSET 0x000A
+#define WIDTH_OFFSET 0x0012
+#define HEIGHT_OFFSET 0x0016
+#define BITS_PER_PIXEL_OFFSET 0x001C
+#define HEADER_SIZE 14
+#define INFO_HEADER_SIZE 40
+#define NO_COMPRESION 0
+#define MAX_NUMBER_OF_COLORS 0
+#define ALL_COLORS_REQUIRED 0
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-typedef int(__cdecl* MYPROC)(LPWSTR);
+typedef int(__cdecl* MYPROC)(unsigned char* pixels, unsigned char* newPixels, int oldWidth, int newWidth, double x_ratio, double y_ratio, int size, int totalSize);
 
 //_g stands for global variables
 
@@ -34,6 +48,11 @@ TypeOfDLL g_currentDLL = TypeOfDLL::ASM;
 int g_numberOfThreads = 1;
 
 std::wstring g_imageFile;
+
+byte* g_pixels;
+unsigned int g_imageWidth;
+unsigned int g_imageHeight;
+unsigned int g_imageBytesPerPixel;
 
 void OnSize(HWND hwnd, UINT flag, int width, int height)
 {
@@ -94,42 +113,146 @@ bool LoadAndBlitBitmap(LPCWSTR szFileName, HDC hWinDC)
     return true;
 }
 
-void scaleImage()
+void WriteImage(const char* fileName, byte* pixels, unsigned int width, unsigned int height)
+{
+    FILE* outputFile = fopen(fileName, "wb");
+
+    const char* BM = "BM";
+    fwrite(&BM[0], 1, 1, outputFile);
+    fwrite(&BM[1], 1, 1, outputFile);
+    int paddedRowSize = (int)(4 * ceil((float)width / 4.0f)) * g_imageBytesPerPixel;
+    unsigned int fileSize = paddedRowSize * height + HEADER_SIZE + INFO_HEADER_SIZE;
+    fwrite(&fileSize, 4, 1, outputFile);
+    unsigned int reserved = 0x0000;
+    fwrite(&reserved, 4, 1, outputFile);
+    unsigned int dataOffset = HEADER_SIZE + INFO_HEADER_SIZE;
+    fwrite(&dataOffset, 4, 1, outputFile);
+
+    unsigned int infoHeaderSize = INFO_HEADER_SIZE;
+    fwrite(&infoHeaderSize, 4, 1, outputFile);
+    fwrite(&width, 4, 1, outputFile);
+    fwrite(&height, 4, 1, outputFile);
+    short planes = 1;
+    fwrite(&planes, 2, 1, outputFile);
+    short bitsPerPixel = g_imageBytesPerPixel * 8;
+    fwrite(&bitsPerPixel, 2, 1, outputFile);
+
+    unsigned int compression = NO_COMPRESION;
+    fwrite(&compression, 4, 1, outputFile);
+    unsigned int imageSize = width * height * g_imageBytesPerPixel;
+    fwrite(&imageSize, 4, 1, outputFile);
+    unsigned int resolutionX = 11811;
+    unsigned int resolutionY = 11811;
+    fwrite(&resolutionX, 4, 1, outputFile);
+    fwrite(&resolutionY, 4, 1, outputFile);
+    unsigned int colorsUsed = MAX_NUMBER_OF_COLORS;
+    fwrite(&colorsUsed, 4, 1, outputFile);
+    unsigned int importantColors = ALL_COLORS_REQUIRED;
+    fwrite(&importantColors, 4, 1, outputFile);
+
+    unsigned int unpaddedRowSize = width * g_imageBytesPerPixel;
+    unsigned int totalSize = unpaddedRowSize * height;
+
+    fwrite(pixels, 1, totalSize, outputFile);
+
+    fclose(outputFile);
+}
+
+void readImage()
+{
+    FILE* imageFile = _wfopen(g_imageFile.c_str(), L"rb");
+    unsigned int dataOffset;
+    fseek(imageFile, DATA_OFFSET_OFFSET, SEEK_SET);
+    fread(&dataOffset, 4, 1, imageFile);
+    fseek(imageFile, WIDTH_OFFSET, SEEK_SET);
+    fread(&g_imageWidth, 4, 1, imageFile);
+    fseek(imageFile, HEIGHT_OFFSET, SEEK_SET);
+    fread(&g_imageHeight, 4, 1, imageFile);
+    short bitsPerPixel;
+    fseek(imageFile, BITS_PER_PIXEL_OFFSET, SEEK_SET);
+    fread(&bitsPerPixel, 2, 1, imageFile);
+    g_imageBytesPerPixel = ((unsigned int)bitsPerPixel) / 8;
+
+    unsigned int unpaddedRowSize = g_imageWidth * g_imageBytesPerPixel;
+    unsigned int totalSize = unpaddedRowSize * g_imageHeight;
+    g_pixels = new byte[totalSize];
+
+    fseek(imageFile, dataOffset, SEEK_SET);
+    fread(g_pixels, 1, totalSize, imageFile);
+
+    fclose(imageFile);
+}
+
+void scaleImage(unsigned int newWidth, unsigned int newHeight)
 {
     HINSTANCE hinstLib;
     MYPROC ProcAdd;
     BOOL fFreeResult, fRunTimeLinkSuccess = FALSE;
 
-    // Get a handle to the DLL module.
+    std::wstring nameOfDLL;
 
-    hinstLib = LoadLibrary(L"../x64/Debug/ImageScalingLibC.dll");
+    readImage();
+    BYTE* newPixels = new BYTE[g_imageBytesPerPixel * newWidth * newHeight];
+    double x_ratio = g_imageWidth / (double)newWidth;
+    double y_ratio = g_imageHeight / (double)newHeight;
 
-    // If the handle is valid, try to get the function address.
-    //LPFNDLLFUNC lpfnDllFunc1;
+    unsigned int oldUnpaddedRowSize = g_imageWidth * g_imageBytesPerPixel;
+    unsigned int unpaddedRowSize = newWidth * g_imageBytesPerPixel;
+
+    unsigned int totalSize = unpaddedRowSize * newHeight;
+
+    int size = totalSize / g_numberOfThreads;
+    int size2 = size;
+    int remnant = totalSize % g_numberOfThreads;
+
+    std::thread* threadArray = new std::thread[g_numberOfThreads];
+
+    switch (g_currentDLL)
+    {
+    case TypeOfDLL::ASM:
+        nameOfDLL = L"ImageScalingLibASM";
+        break;
+    case TypeOfDLL::C:
+        nameOfDLL = L"ImageScalingLibC";
+        break;
+    default:
+        break;
+    }
+    hinstLib = LoadLibrary(nameOfDLL.c_str());
+
     if (hinstLib != NULL)
     {
         ProcAdd = (MYPROC)GetProcAddress(hinstLib, "scaleImage");
 
-        // If the function address is valid, call the function.
-
-        if (NULL != ProcAdd)
+        if (ProcAdd != NULL)
         {
             fRunTimeLinkSuccess = TRUE;
-            (ProcAdd)((LPWSTR)L"lala\n");
+            for (int i = 0; i < g_numberOfThreads; i++)
+            {
+                if (i == g_numberOfThreads - 1)
+                    size2 += remnant;
+
+                threadArray[i] = std::thread(ProcAdd, g_pixels, &newPixels[size * i], oldUnpaddedRowSize, unpaddedRowSize, x_ratio, y_ratio, size2, size*i);
+            }
+            for (int i = 0; i < g_numberOfThreads; i++)
+            {
+                threadArray[i].join();
+            }
         }
-        // Free the DLL module.
 
         fFreeResult = FreeLibrary(hinstLib);
     }
 
-    // If unable to call the DLL function, use an alternative.
     if (!fRunTimeLinkSuccess)
         ::MessageBox(NULL, L"Nie uda³o siê za³adowaæ DLL", L"Error", MB_OK);
+
+    delete[] threadArray;
+
+    WriteImage("output.bmp", newPixels, newWidth, newHeight);
 }
 
 int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_In_  PWSTR pCmdLine,_In_  int nCmdShow)
 {
-    // Register the window class.
     const wchar_t CLASS_NAME[] = L"AppWindow";
 
     WNDCLASS wc = { };
@@ -426,7 +549,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 g_imageFile = buffer;
                 g_imageFile += L".bmp";
                 RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
-                g_imageFile.clear();
             }
             else
             {
@@ -437,7 +559,23 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         else if ((HWND)lParam == g_hwndButtonScale)
         {
-            scaleImage();
+            unsigned int newWidth = 0;
+            unsigned int newHeight = 0;
+            DWORD length = GetWindowTextLength(g_hwndEnterTextScaleWidth);
+            LPWSTR buffer = (LPWSTR)GlobalAlloc(GPTR, static_cast<SIZE_T>(length) + 1);
+            if (buffer)
+            {
+                GetWindowTextW(g_hwndEnterTextScaleWidth, buffer, length + 1);
+                newWidth = _wtoi(buffer);
+            }
+            length = GetWindowTextLength(g_hwndEnterTextScaleHeight);
+            buffer = (LPWSTR)GlobalAlloc(GPTR, static_cast<SIZE_T>(length) + 1);
+            if (buffer)
+            {
+                GetWindowTextW(g_hwndEnterTextScaleHeight, buffer, length + 1);
+                newHeight = _wtoi(buffer);
+            }
+            scaleImage(newWidth, newHeight);
         }
         break;
 
