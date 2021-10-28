@@ -60,56 +60,21 @@ void OnSize(HWND hwnd, UINT flag, int width, int height)
 }
 
 //function from https://xoax.net/cpp/crs/win32/lessons/Lesson9/
-bool LoadAndBlitBitmap(LPCWSTR szFileName, HDC hWinDC)
+bool LoadAndBlitBitmap(HDC hDC, DWORD dwROP)
 {
     //Load the bitmap image file
     HBITMAP hBitmap;
-    hBitmap = (HBITMAP)::LoadImage(NULL, szFileName, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    HDC       hDCBits;
+    BITMAP    Bitmap;
+    BOOL      bResult;
+    //hBitmap = CreateBitmap(g_imageWidth, g_imageHeight, 1, 24, g_pixels);
+    hBitmap = (HBITMAP)::LoadImage(NULL,  g_imageFile.c_str(), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
     //Verify that image was loaded
-    if (hBitmap == NULL)
-    {
-        ::MessageBox(NULL, L"Nie uda³o siê za³adowaæ obrazu", L"Error", MB_OK);
-        return false;
-    }
-    
-    //Create a device context that is compatible with the window
-    HDC hLocalDC;
-    hLocalDC = ::CreateCompatibleDC(hWinDC);
-    //Verift that the device context was created
-    if (hLocalDC == NULL)
-    {
-        ::MessageBox(NULL, L"Urz¹dzenie nie jest kompatybilne", L"Error", MB_OK);
-        return false;
-    }
-
-    BITMAP qBitmap;
-    int iReturn = GetObject(reinterpret_cast<HGDIOBJ>(hBitmap), sizeof(BITMAP), reinterpret_cast<LPVOID>(&qBitmap));
-    if (!iReturn)
-    {
-        ::MessageBox(NULL, L"Nie uda³o siê za³adowaæ obrazu", L"Error", MB_OK);
-        return false;
-    }
-
-    //Select the loadem bitmap into the device context
-    HBITMAP hOldBmp = (HBITMAP)::SelectObject(hLocalDC, hBitmap);
-    if (hOldBmp == NULL)
-    {
-        ::MessageBox(NULL, L"Nie uda³o siê za³adowaæ obrazu", L"Error", MB_OK);
-        return false;
-    }
-
-    //Blit the dc which holds the bitmap onto the window's dc
-    BOOL qRetBlit = ::BitBlt(hWinDC, 500, 0, qBitmap.bmWidth, qBitmap.bmHeight, hLocalDC, 0, 0, SRCCOPY);
-    if (!qRetBlit)
-    {
-        ::MessageBox(NULL, L"Nie uda³o siê za³adowaæ obrazu", L"Error", MB_OK);
-        return false;
-    }
-
-    //Unitialize and deallocate resources
-    ::SelectObject(hLocalDC, hOldBmp);
-    ::DeleteDC(hLocalDC);
-    ::DeleteObject(hBitmap);
+    hDCBits = CreateCompatibleDC(hDC);
+    GetObject(hBitmap, sizeof(BITMAP), (LPSTR)&Bitmap);
+    SelectObject(hDCBits, hBitmap);
+    bResult = BitBlt(hDC, 500, 0, Bitmap.bmWidth, Bitmap.bmHeight, hDCBits, 0, 0, SRCCOPY);
+    DeleteDC(hDCBits);
     return true;
 }
 
@@ -604,7 +569,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         if (!g_imageFile.empty())
         {
             LPCWSTR imageFile = g_imageFile.c_str();
-            LoadAndBlitBitmap(imageFile, hdc);
+            readImage();
+            LoadAndBlitBitmap(hdc, SRCCOPY);
         }
         EndPaint(hwnd, &ps);
         break;
