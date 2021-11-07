@@ -1,5 +1,6 @@
 .code
-scaleImage proc pixels: DWORD, newPixels: DWORD, oldWidth: DWORD, oldWidth2: DWORD, oldWidth3: DWORD, oldWidth4: DWORD,  sizze: DWORD, totalSize: DWORD
+scaleImage proc
+ mov R9, R8;
  xor eax,eax ; EAX = 0
  ret;
 scaleImage endp

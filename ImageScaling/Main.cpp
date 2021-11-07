@@ -24,7 +24,7 @@
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-typedef int(__cdecl* MYPROC)(unsigned char* pixels, unsigned char* newPixels, int oldWidth, int newWidth, double x_ratio, double y_ratio, int size, int totalSize, int scale);
+typedef int(__cdecl* MYPROC)(unsigned char* pixels, unsigned char* newPixels, int oldWidth, int newWidth, double x_ratio, double y_ratio, int size, int totalSize);
 
 //_g stands for global variables
 
@@ -219,7 +219,7 @@ void scaleImage(unsigned int newWidth, unsigned int newHeight)
                 
                 std::vector<byte> v;
                 std::copy(v.begin(), v.end(), g_pixels);
-                threadArray.push_back(std::thread(ProcAdd, &g_pixels[0], &newPixels[0], oldUnpaddedRowSize, unpaddedRowSize, x_ratio, y_ratio, size2, size*i, g_scale));
+                threadArray.push_back(std::thread(ProcAdd, &g_pixels[0], &newPixels[0], oldUnpaddedRowSize, unpaddedRowSize, x_ratio, y_ratio, size2, size*i));
             }
             for (int i = 0; i < g_numberOfThreads; i++)
             {
