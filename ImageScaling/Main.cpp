@@ -24,7 +24,7 @@
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-typedef int(__cdecl* MYPROC)(unsigned char* pixels, unsigned char* newPixels, int oldWidth, int newWidth, double x_ratio, double y_ratio, int size, int totalSize);
+typedef int(__cdecl* MYPROC)(byte* pixels, byte* newPixels, int oldWidth, int newWidth, double x_ratio, double y_ratio, int partSize, int totalSize);
 
 //_g stands for global variables
 
@@ -75,7 +75,7 @@ bool LoadAndBlitBitmap(HDC hDC, DWORD dwROP)
     for (int i = 0; i < g_imageHeight; i++) {
         for (int j = 0; j < g_imageWidth*3; j += 3)
         {
-            SetPixel(memDC, j/3, i, RGB(g_pixels[(i * g_imageWidth * 3) + j + 2], g_pixels[(i * g_imageWidth * 3) + j + 1], g_pixels[(i * g_imageWidth * 3) + j]));
+            SetPixel(memDC, j/3, i, RGB(g_pixels[((g_imageHeight - i - 1) * g_imageWidth * 3) + j + 2], g_pixels[((g_imageHeight - i - 1) * g_imageWidth * 3) + j + 1], g_pixels[((g_imageHeight - i - 1) * g_imageWidth * 3) + j]));
         }
     }
     bResult = BitBlt(hDC, 500, 0, g_imageWidth, g_imageHeight, memDC, 0, 0, SRCCOPY);
@@ -215,11 +215,8 @@ void scaleImage(unsigned int newWidth, unsigned int newHeight)
             {
                 if (i == g_numberOfThreads - 1)
                     size2 += remnant;
-                const int arr_size = totalSize;
-                
-                std::vector<byte> v;
-                std::copy(v.begin(), v.end(), g_pixels);
-                threadArray.push_back(std::thread(ProcAdd, &g_pixels[0], &newPixels[0], oldUnpaddedRowSize, unpaddedRowSize, x_ratio, y_ratio, size2, size*i));
+
+                threadArray.push_back(std::thread(ProcAdd, &g_pixels[0], &newPixels[0], oldUnpaddedRowSize, unpaddedRowSize, x_ratio, y_ratio, size2, size * i));
             }
             for (int i = 0; i < g_numberOfThreads; i++)
             {

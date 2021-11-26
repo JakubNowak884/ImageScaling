@@ -2,11 +2,11 @@
 #include <math.h>
 #include "ImageScalingC.h"
 
-void scaleImage(unsigned char* pixels, unsigned char* newPixels, int oldWidth, int newWidth, double x_ratio, double y_ratio, int size, int totalSize)
+void scaleImage(unsigned char* pixels, unsigned char* newPixels, int oldWidth, int newWidth, double x_ratio, double y_ratio, int partSize, int totalSize)
 {
     double px, py;
     
-    for (int j = 0; j < size; j += 3)
+    for (int j = 0; j < partSize; j += 3)
     {
         int currentSize = (totalSize + j) / 3;
         int row = (currentSize / (newWidth / 3));
