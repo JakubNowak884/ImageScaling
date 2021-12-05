@@ -39,14 +39,22 @@ mulps xmm2, xmm0;
 ;py = floor(row * y_ratio);
 movd xmm3, R13D;
 mulps xmm3, xmm1;
+roundps xmm3, xmm3;
 
 ;px *= 3;
+mulps xmm2, edi;
 
 ;newPixels[totalSize + j] = pixels[(int)((py * oldWidth) + px)];
+mulps xmm3, R8;
+addps xmm3, xmm2;
+roundps xmm4, xmm3;
 
 ;newPixels[totalSize + j + 1] = pixels[(int)((py * oldWidth) + px) + 1];
+mov edi, '1';
+addps xmm3, edi;
 
 ;newPixels[totalSize + j + 2] = pixels[(int)((py * oldWidth) + px) + 2];
+addps xmm3, edi;
 
 ret;
 scaleImage endp
