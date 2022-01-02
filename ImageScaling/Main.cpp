@@ -28,6 +28,7 @@ typedef int(__cdecl* MYPROC)(byte* pixels, byte* newPixels, int oldWidth, int ne
 
 //_g stands for global variables
 
+HWND g_hwndBackground;
 HWND g_hwndButtonDLL;
 HWND g_hwndTextDLL;
 
@@ -43,6 +44,8 @@ HWND g_hwndTrackbarScale;
 
 HWND g_hwndButtonScale;
 
+HWND g_hwndTextResults;
+
 enum class TypeOfDLL {ASM, C};
 TypeOfDLL g_currentDLL = TypeOfDLL::ASM;
 
@@ -55,6 +58,8 @@ byte* g_pixels;
 unsigned int g_imageWidth;
 unsigned int g_imageHeight;
 unsigned int g_imageBytesPerPixel;
+
+double g_result = 0.0f;
 
 void OnSize(HWND hwnd, UINT flag, int width, int height)
 {
@@ -78,7 +83,7 @@ bool LoadAndBlitBitmap(HDC hDC, DWORD dwROP)
             SetPixel(memDC, j/3, i, RGB(g_pixels[((g_imageHeight - i - 1) * g_imageWidth * 3) + j + 2], g_pixels[((g_imageHeight - i - 1) * g_imageWidth * 3) + j + 1], g_pixels[((g_imageHeight - i - 1) * g_imageWidth * 3) + j]));
         }
     }
-    bResult = BitBlt(hDC, 500, 0, g_imageWidth, g_imageHeight, memDC, 0, 0, SRCCOPY);
+    bResult = BitBlt(hDC, 0, 0, g_imageWidth, g_imageHeight, memDC, 0, 0, SRCCOPY);
     DeleteDC(memDC);
     return true;
 }
@@ -218,10 +223,14 @@ void scaleImage(unsigned int newWidth, unsigned int newHeight)
 
                 threadArray.push_back(std::thread(ProcAdd, &g_pixels[0], &newPixels[0], oldUnpaddedRowSize, unpaddedRowSize, x_ratio, y_ratio, size2, size * i));
             }
+            auto start = std::chrono::high_resolution_clock::now();
             for (int i = 0; i < g_numberOfThreads; i++)
             {
                 threadArray[i].join();
             }
+            auto finish = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed = finish - start;
+            g_result = elapsed.count();
         }
 
         fFreeResult = FreeLibrary(hinstLib);
@@ -248,13 +257,13 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
     // Create the window.
 
     HWND hwnd = CreateWindowEx(
-        0x00000010L,                              // Optional window styles.
+        WS_EX_CLIENTEDGE,                              // Optional window styles.
         CLASS_NAME,                     // Window class
         L"Skalowanie Obrazu",    // Window text
-        WS_OVERLAPPEDWINDOW,            // Window style
+        (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX),            // Window style
 
         // Size and position
-        CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+        CW_USEDEFAULT, CW_USEDEFAULT, 1200, 800,
 
         NULL,       // Parent window    
         NULL,       // Menu
@@ -262,13 +271,28 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         NULL        // Additional application data
     );
 
+    g_hwndBackground = CreateWindowEx(
+        0,
+        L"STATIC",  // Predefined class; Unicode assumed 
+        NULL,
+        WS_CHILD | WS_VISIBLE | WS_BORDER,
+        880,
+        0,
+        325,
+        800,
+        hwnd,
+        NULL,
+        hInstance,
+        NULL
+    );
+
     g_hwndButtonDLL = CreateWindowEx(
         0,
         L"BUTTON",  // Predefined class; Unicode assumed 
         L"zmieñ",      // Button text 
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // Styles 
-        250,         // x position 
-        0,         // y position 
+        1130,         // x position 
+        50,         // y position 
         50,        // Button width
         20,        // Button height
         hwnd,     // Parent window
@@ -282,8 +306,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         L"STATIC",  // Predefined class; Unicode assumed 
         NULL, 
         WS_CHILD | WS_VISIBLE | WS_BORDER, 
-        0, 
-        0, 
+        880, 
+        50, 
         250, 
         20,
         hwnd, 
@@ -298,9 +322,9 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         L"STATIC",  // Predefined class; Unicode assumed 
         NULL,
         WS_CHILD | WS_VISIBLE | WS_BORDER,
-        0,
-        40,
-        250,
+        880,
+        100,
+        300,
         20,
         hwnd,
         NULL,
@@ -318,9 +342,9 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         WS_VISIBLE |
         TBS_AUTOTICKS |
         TBS_ENABLESELRANGE,                // style 
-        0, 
-        60,                          // position 
-        250, 
+        880, 
+        120,                          // position 
+        300, 
         20,                         // size 
         hwnd,                         // parent window 
         NULL,                    // control identifier 
@@ -348,9 +372,9 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         L"STATIC",  // Predefined class; Unicode assumed 
         NULL,
         WS_CHILD | WS_VISIBLE | WS_BORDER,
-        0,
-        100,
-        250,
+        880,
+        200,
+        300,
         20,
         hwnd,
         NULL,
@@ -364,9 +388,9 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         L"Edit",  // Predefined class; Unicode assumed 
         NULL,
         WS_CHILD | WS_VISIBLE | WS_BORDER,
-        0,
-        120,
-        250,
+        880,
+        220,
+        300,
         20,
         hwnd,
         NULL,
@@ -379,8 +403,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         L"BUTTON",  // Predefined class; Unicode assumed 
         L"ok",      // Button text 
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // Styles 
-        250,         // x position 
-        120,         // y position 
+        1130,         // x position 
+        240,         // y position 
         50,        // Button width
         20,        // Button height
         hwnd,     // Parent window
@@ -394,9 +418,9 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         L"STATIC",  // Predefined class; Unicode assumed 
         NULL,
         WS_CHILD | WS_VISIBLE | WS_BORDER,
-        0,
-        160,
-        250,
+        880,
+        300,
+        300,
         20,
         hwnd,
         NULL,
@@ -414,9 +438,9 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         WS_VISIBLE |
         TBS_AUTOTICKS |
         TBS_ENABLESELRANGE,                // style 
-        0,
-        180,                          // position 
-        250,
+        880,
+        320,                          // position 
+        300,
         20,                         // size 
         hwnd,                         // parent window 
         NULL,                    // control identifier 
@@ -444,8 +468,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         L"BUTTON",  // Predefined class; Unicode assumed 
         L"skaluj",      // Button text 
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // Styles 
-        0,         // x position 
-        200,         // y position 
+        1080,         // x position 
+        340,         // y position 
         100,        // Button width
         20,        // Button height
         hwnd,     // Parent window
@@ -453,6 +477,22 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE),
         NULL        // Pointer not needed.
     );
+
+    g_hwndTextResults = CreateWindowEx(
+        0,
+        L"STATIC",  // Predefined class; Unicode assumed 
+        NULL,
+        WS_CHILD | WS_VISIBLE | WS_BORDER,
+        880,
+        400,
+        300,
+        20,
+        hwnd,
+        NULL,
+        hInstance,
+        NULL
+    );
+    SetWindowText(g_hwndTextResults, L"Czas wykonania: ");
 
     if (hwnd == NULL)
     {
@@ -530,6 +570,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         else if ((HWND)lParam == g_hwndButtonScale)
         {
             scaleImage(g_imageWidth * g_scale, g_imageHeight * g_scale);
+            std::wstring resultText = L"Czas wykonania: " + std::to_wstring(g_result);
+            SetWindowText(g_hwndTextResults, resultText.c_str());
         }
         break;
 

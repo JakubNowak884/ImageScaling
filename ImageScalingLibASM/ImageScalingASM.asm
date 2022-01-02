@@ -4,110 +4,128 @@
 ;oldWidth in R8
 ;newWidth in R9
 
-scaleImage proc pixels: PTR BYTE, newPixels: PTR BYTE, oldWidth: DWORD, newWidth: DWORD, x_ratio: REAL8, y_ratio: REAL8, partSize: DWORD, totalSize: DWORD
- xor eax, eax;
- movsd xmm0, x_ratio;
- movsd xmm1, y_ratio;
- mov ebx, DWORD PTR[rsp + 56]; partSize
- mov R11D, DWORD PTR[rsp + 64]; totalSize
+scaleImage proc pixels
 
- mov esi, '0';
- mov edi, '3';
+ push rbp
+ push rbx
+ push rsi
+ push rdi
+ push rdx
+ push rcx
+ push r15
+ push r14
+ push r13
+ push r12
+ push r11
+ push r10
+ push r9
+ push r8
+
+ xor eax, eax;
+ xor R11, r11;
+ mov ebx, DWORD PTR[rsp + 64 + 112]; partSize
+ mov R11D, DWORD PTR[rsp + 72 + 112]; totalSize
+
+ mov R14, RDX
+ mov rsi, 0;
+ mov rdi, 3;
 
  xor edx, edx;
  xor eax, eax;
 
- M_LOOP:
- ;(newWidth / 3)
- mov eax, R9D;
+;(newWidth / 3)
+mov eax, R9D;
 div edi;
 mov R9D, eax;
 
+ M_LOOP:
+
+ xor edx, edx;
+ xor eax, eax;
+ xor rdi, rdi;
+ mov rdi, 3;
+
 ;int currentSize = (totalSize + j) / 3;
-add R10D, esi;
-mov eax, R10d;
+add esi, r11d;
+mov eax, esi;
 div edi;
 mov R12D, eax;
 ;int row = (currentSize / (newWidth / 3));
+ xor edx, edx;
+ xor eax, eax;
+
 mov eax, R12D;
 div R9D;
 mov R13D, eax;
 ;int column = (currentSize % (newWidth / 3));
+ xor edx, edx;
+ xor eax, eax;
+
 mov eax, R12D;
-div  edi;
+div  R9D;
 mov R12D, edx;
 ;px = floor(column * x_ratio);
-movd xmm2, R12D;
-mulps xmm2, xmm0;
-roundps xmm2, xmm2, 9;
+cvtsi2sd xmm2, R12D;
+mulpd xmm2, xmm0;
+roundpd xmm2, xmm2, 9;
 
 ;py = floor(row * y_ratio);
-cvtsi2ss R13D, xmm3 ;nie dzia³a, coœ nie tak z miejscem
-mulps xmm3, xmm1;
-<<<<<<< HEAD
-roundps xmm3, xmm3, 9;
+cvtsi2sd xmm3, R13D;
+mulpd xmm3, xmm1;
+roundpd xmm3, xmm3, 9;
 
 ;px *= 3;
-movd xmm0, edi;
-mulps xmm2, xmm0;
+cvtsi2sd xmm5, edi;
+mulpd xmm2, xmm5;
 
 ;newPixels[totalSize + j] = pixels[(int)((py * oldWidth) + px)];
-movd xmm0, R8D;
-mulsd xmm3, xmm0;
+cvtsi2sd xmm5, R8D;
+mulsd xmm3, xmm5;
 addsd xmm3, xmm2;
-roundps xmm3, xmm3, 9;
-cvttsd2si rsi, xmm3;
+roundpd xmm3, xmm3, 9;
+cvttsd2si rdi, xmm3; powinno wyjœæ 1 a wychodzi 2 w drugim przejœciu pêtli
+
 add rdi, RCX;
-add rsi, RDX;
-mov al, BYTE PTR [rsi];
-mov BYTE PTR [rdi], al;
+mov r15, rsi;
+add r15, R14;
+mov al, BYTE PTR [rdi];
+mov BYTE PTR [r15], al;
 
 ;newPixels[totalSize + j + 1] = pixels[(int)((py * oldWidth) + px) + 1];
-mov rdi, '1';
-add R11D, edi;
-movd xmm0, edi;
-addsd xmm3, xmm0;
-cvttsd2si edi, xmm3
-add rdi, RCX
-add rsi, RDX;
-mov al, BYTE PTR [rsi]
-mov BYTE PTR [rdi], al
+mov rdx, 1;
+add rdi, Rdx
+add r15, RDX;
+mov al, BYTE PTR [rdi];
+mov BYTE PTR [r15], al;
 
 ;newPixels[totalSize + j + 2] = pixels[(int)((py * oldWidth) + px) + 2];
-mov edi, '2';
-add R11D, edi;
-movd xmm0, edi;
-addsd xmm3, xmm0;
-cvttsd2si edi, xmm3
-add rdi, RCX
-add rsi, RDX;
-mov al, BYTE PTR  [rsi]
-mov BYTE PTR  [rdi], al
+mov rdx, 1;
+add rdi, Rdx
+add r15, rdx;
+mov al, BYTE PTR  [rdi];
+mov BYTE PTR  [r15], al;
 
-mov eax, '3';
-sub ebx, eax;
-mov eax, '0'
-cmp ebx, eax;
-JE M_LOOP
-=======
-roundps xmm3, xmm3;
+add rsi, 3;
+cmp rbx, rsi;
 
-;px *= 3;
-mulps xmm2, edi;
+JNE M_LOOP
 
-;newPixels[totalSize + j] = pixels[(int)((py * oldWidth) + px)];
-mulps xmm3, R8;
-addps xmm3, xmm2;
-roundps xmm4, xmm3;
+pop r8
+pop r9
+pop r10
+pop r11
+pop r12
+pop r13
+pop r14
+pop r15
+pop rcx
+pop rdx
+pop rdi
+pop rsi
+pop rbx
+pop rbp
 
-;newPixels[totalSize + j + 1] = pixels[(int)((py * oldWidth) + px) + 1];
-mov edi, '1';
-addps xmm3, edi;
+ret
 
-;newPixels[totalSize + j + 2] = pixels[(int)((py * oldWidth) + px) + 2];
-addps xmm3, edi;
->>>>>>> d82ad5a3fadbd2b18b794ac6df3582584ecad036
-
-ret;
 scaleImage endp
 end ; End of ASM file

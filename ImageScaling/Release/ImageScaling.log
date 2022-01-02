@@ -1,0 +1,11 @@
+﻿  Main.cpp
+C:\Users\Kuba\source\repos\ImageScaling\ImageScaling\Main.cpp(80,23): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Kuba\source\repos\ImageScaling\ImageScaling\Main.cpp(81,27): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Kuba\source\repos\ImageScaling\ImageScaling\Main.cpp(71,13): warning C4101: 'hBitmap': unreferenced local variable
+C:\Users\Kuba\source\repos\ImageScaling\ImageScaling\Main.cpp(135,23): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Kuba\source\repos\ImageScaling\ImageScaling\Main.cpp(167,23): warning C4018: '<': signed/unsigned mismatch
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 244 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  ImageScaling.vcxproj -> C:\Users\Kuba\source\repos\ImageScaling\Release\ImageScaling.exe
