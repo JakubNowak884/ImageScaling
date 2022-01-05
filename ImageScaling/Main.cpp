@@ -11,6 +11,7 @@
 #include <CommCtrl.h>
 #include <iostream>
 #include <vector>
+#include <fstream>
 
 #define DATA_OFFSET_OFFSET 0x000A
 #define WIDTH_OFFSET 0x0012
@@ -39,12 +40,18 @@ HWND g_hwndTextFile;
 HWND g_hwndEnterTextFile;
 HWND g_hwndButtonFile;
 
+HWND g_hwndTextCurrentFile;
+HWND g_hwndButtonShowCurrentFile;
+HWND g_hwndTextShowFileWarning;
+
 HWND g_hwndTextScale;
 HWND g_hwndTrackbarScale;
 
 HWND g_hwndButtonScale;
 
 HWND g_hwndTextResults;
+HWND g_hwndButtonSaveResults;
+HWND g_hwndTextSaveResultsWarning;
 
 enum class TypeOfDLL {ASM, C};
 TypeOfDLL g_currentDLL = TypeOfDLL::ASM;
@@ -59,7 +66,7 @@ unsigned int g_imageWidth;
 unsigned int g_imageHeight;
 unsigned int g_imageBytesPerPixel;
 
-double g_result = 0.0f;
+double g_result = 0.0;
 
 void OnSize(HWND hwnd, UINT flag, int width, int height)
 {
@@ -193,6 +200,13 @@ void scaleImage(unsigned int newWidth, unsigned int newHeight)
     int size = totalSize / g_numberOfThreads;
     int size2 = size;
     int remnant = totalSize % g_numberOfThreads;
+
+    while (size % 3 != 0)
+    {
+        size--;
+        size2--;
+        remnant += g_numberOfThreads;
+    }
 
     std::vector<std::thread> threadArray;
 
@@ -413,13 +427,60 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         NULL        // Pointer not needed.
     );
 
+    g_hwndTextCurrentFile = CreateWindowEx(
+        0,
+        L"STATIC",  // Predefined class; Unicode assumed 
+        NULL,
+        WS_CHILD | WS_VISIBLE | WS_BORDER,
+        880,
+        260,
+        300,
+        40,
+        hwnd,
+        NULL,
+        hInstance,
+        NULL
+    );
+    SetWindowText(g_hwndTextCurrentFile, L"Aktualnie przetwarzany plik .bmp:");
+
+    g_hwndButtonShowCurrentFile = CreateWindowEx(
+        0,
+        L"BUTTON",  // Predefined class; Unicode assumed 
+        L"Poka¿ obraz",      // Button text 
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // Styles 
+        880,         // x position 
+        320,         // y position 
+        100,        // Button width
+        20,        // Button height
+        hwnd,     // Parent window
+        NULL,       // No menu.
+        (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE),
+        NULL        // Pointer not needed.
+    );
+
+    g_hwndTextShowFileWarning = CreateWindowEx(
+        0,
+        L"STATIC",  // Predefined class; Unicode assumed 
+        NULL,
+        WS_CHILD | WS_VISIBLE | WS_BORDER,
+        880,
+        340,
+        300,
+        40,
+        hwnd,
+        NULL,
+        hInstance,
+        NULL
+    );
+    SetWindowText(g_hwndTextShowFileWarning, L"Uwaga: mo¿e zaj¹æ d³ugo dla du¿ych obrazów");
+
     g_hwndTextScale = CreateWindowEx(
         0,
         L"STATIC",  // Predefined class; Unicode assumed 
         NULL,
         WS_CHILD | WS_VISIBLE | WS_BORDER,
         880,
-        300,
+        400,
         300,
         20,
         hwnd,
@@ -439,7 +500,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         TBS_AUTOTICKS |
         TBS_ENABLESELRANGE,                // style 
         880,
-        320,                          // position 
+        420,                          // position 
         300,
         20,                         // size 
         hwnd,                         // parent window 
@@ -469,7 +530,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         L"skaluj",      // Button text 
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // Styles 
         1080,         // x position 
-        340,         // y position 
+        440,         // y position 
         100,        // Button width
         20,        // Button height
         hwnd,     // Parent window
@@ -484,7 +545,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         NULL,
         WS_CHILD | WS_VISIBLE | WS_BORDER,
         880,
-        400,
+        500,
         300,
         20,
         hwnd,
@@ -493,6 +554,37 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         NULL
     );
     SetWindowText(g_hwndTextResults, L"Czas wykonania: ");
+
+    g_hwndButtonSaveResults = CreateWindowEx(
+        0,
+        L"BUTTON",  // Predefined class; Unicode assumed 
+        L"Eksportuj porównanie do pliku",      // Button text 
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // Styles 
+        880,         // x position 
+        540,         // y position 
+        300,        // Button width
+        20,        // Button height
+        hwnd,     // Parent window
+        NULL,       // No menu.
+        (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE),
+        NULL        // Pointer not needed.
+    );
+
+    g_hwndTextSaveResultsWarning = CreateWindowEx(
+        0,
+        L"STATIC",  // Predefined class; Unicode assumed 
+        NULL,
+        WS_CHILD | WS_VISIBLE | WS_BORDER,
+        880,
+        560,
+        300,
+        60,
+        hwnd,
+        NULL,
+        hInstance,
+        NULL
+    );
+    SetWindowText(g_hwndTextSaveResultsWarning, L"Uwaga: porównanie wyników powoduje wykonanie programu 1280 razy (10 razy dla ka¿dej z bibliotek na od 1 do 64 w¹tków)");
 
     if (hwnd == NULL)
     {
@@ -558,7 +650,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 GetWindowTextW(g_hwndEnterTextFile, buffer, length + 1);
                 g_imageFile = buffer;
                 g_imageFile += L".bmp";
-                RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+                //RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+                LPCWSTR imageFile = g_imageFile.c_str();
+                readImage();
+                g_imageFile.clear();
             }
             else
             {
@@ -572,6 +667,48 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             scaleImage(g_imageWidth * g_scale, g_imageHeight * g_scale);
             std::wstring resultText = L"Czas wykonania: " + std::to_wstring(g_result);
             SetWindowText(g_hwndTextResults, resultText.c_str());
+        }
+        else if ((HWND)lParam == g_hwndButtonSaveResults)
+        {
+            int numberOfThreads = g_numberOfThreads;
+            TypeOfDLL currentDLL = g_currentDLL;
+
+            std::ofstream myfile;
+            myfile.open("results.csv");
+
+            g_currentDLL = TypeOfDLL::ASM;
+            
+            for (int t = 1; t <= 64; t++)
+            {
+                double result = 0.0;
+                for (int i = 0; i < 10; i++)
+                {
+                    g_numberOfThreads = t;
+                    scaleImage(g_imageWidth * g_scale, g_imageHeight * g_scale);
+                    result += g_result;
+                }
+                result /= 10;
+                myfile << result << ',';
+            }
+           
+            myfile << '\n';
+            g_currentDLL = TypeOfDLL::C;
+            for (int t = 1; t <= 64; t++)
+            {
+                double result = 0.0;
+                for (int i = 0; i < 10; i++)
+                {
+                    g_numberOfThreads = t;
+                    scaleImage(g_imageWidth * g_scale, g_imageHeight * g_scale);
+                    result += g_result;
+                }
+                result /= 10;
+                myfile << result << ',';
+            }
+
+            g_numberOfThreads = numberOfThreads;
+            g_currentDLL = currentDLL;
+            myfile.close();
         }
         break;
 
@@ -615,10 +752,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         hdc = BeginPaint(hwnd, &ps);
         if (!g_imageFile.empty())
         {
-            LPCWSTR imageFile = g_imageFile.c_str();
-            readImage();
             LoadAndBlitBitmap(hdc, SRCCOPY);
-            g_imageFile.clear();
         }
         EndPaint(hwnd, &ps);
         break;

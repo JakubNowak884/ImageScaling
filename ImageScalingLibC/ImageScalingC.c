@@ -6,7 +6,7 @@ void scaleImage(unsigned char* pixels, unsigned char* newPixels, int oldWidth, i
 {
     double px, py;
     
-    for (int j = 0; j < partSize; j += 3)
+    for (int j = 0; j < partSize; j++)
     {
         int currentSize = (totalSize + j) / 3;
         int row = (currentSize / (newWidth / 3));
@@ -15,7 +15,11 @@ void scaleImage(unsigned char* pixels, unsigned char* newPixels, int oldWidth, i
         py = floor(row * y_ratio);
         px *= 3;
         newPixels[totalSize + j] = pixels[(int)((py * oldWidth) + px)];
-        newPixels[totalSize + j + 1] = pixels[(int)((py * oldWidth) + px) + 1];
-        newPixels[totalSize + j + 2] = pixels[(int)((py * oldWidth) + px) + 2];
+        if (++j == partSize - 1)
+            break;
+        newPixels[totalSize + j] = pixels[(int)((py * oldWidth) + px) + 1];
+        if (++j == partSize - 1)
+            break;
+        newPixels[totalSize + j] = pixels[(int)((py * oldWidth) + px) + 2];
     }
 }
