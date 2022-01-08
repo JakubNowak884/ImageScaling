@@ -50,6 +50,8 @@ HWND g_hwndTrackbarScale;
 HWND g_hwndButtonScale;
 
 HWND g_hwndTextResults;
+
+HWND g_hwndTextProgress;
 HWND g_hwndButtonSaveResults;
 HWND g_hwndTextSaveResultsWarning;
 
@@ -149,6 +151,9 @@ void WriteImage(const char* fileName, byte* pixels, unsigned int width, unsigned
 
 void readImage()
 {
+    if (g_pixels != nullptr)
+        delete[] g_pixels;
+
     FILE* imageFile = _wfopen(g_imageFile.c_str(), L"rb");
     unsigned int dataOffset;
     fseek(imageFile, DATA_OFFSET_OFFSET, SEEK_SET);
@@ -197,9 +202,24 @@ void scaleImage(unsigned int newWidth, unsigned int newHeight)
 
     unsigned int totalSize = unpaddedRowSize * newHeight;
 
-    int size = totalSize / g_numberOfThreads;
-    int size2 = size;
-    int remnant = totalSize % g_numberOfThreads;
+    int size = 0;
+    int size2 = 0; 
+    int remnant = 0;
+
+    if (totalSize < g_numberOfThreads)
+    {
+        size = g_numberOfThreads;
+        size2 = size;
+        remnant = 0;
+    }
+    else
+    {
+        size = totalSize / g_numberOfThreads;
+        size2 = size;
+        remnant = totalSize % g_numberOfThreads;
+    }
+
+    
 
     while (size % 3 != 0)
     {
@@ -254,6 +274,7 @@ void scaleImage(unsigned int newWidth, unsigned int newHeight)
         ::MessageBox(NULL, L"Nie uda³o siê za³adowaæ DLL", L"Error", MB_OK);
 
     WriteImage("output.bmp", newPixels, newWidth, newHeight);
+    delete[] newPixels;
 }
 
 int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_In_  PWSTR pCmdLine,_In_  int nCmdShow)
@@ -274,7 +295,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         WS_EX_CLIENTEDGE,                              // Optional window styles.
         CLASS_NAME,                     // Window class
         L"Skalowanie Obrazu",    // Window text
-        (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX),            // Window style
+        (WS_OVERLAPPEDWINDOW),            // Window style
 
         // Size and position
         CW_USEDEFAULT, CW_USEDEFAULT, 1200, 800,
@@ -555,6 +576,22 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
     );
     SetWindowText(g_hwndTextResults, L"Czas wykonania: ");
 
+    g_hwndTextProgress = CreateWindowEx(
+        0,
+        L"STATIC",  // Predefined class; Unicode assumed 
+        NULL,
+        WS_CHILD | WS_VISIBLE | WS_BORDER,
+        880,
+        520,
+        300,
+        40,
+        hwnd,
+        NULL,
+        hInstance,
+        NULL
+    );
+    SetWindowText(g_hwndTextProgress, L" ");
+
     g_hwndButtonSaveResults = CreateWindowEx(
         0,
         L"BUTTON",  // Predefined class; Unicode assumed 
@@ -677,6 +714,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             myfile.open("results.csv");
 
             g_currentDLL = TypeOfDLL::ASM;
+            float progress = 0.0f;
             
             for (int t = 1; t <= 64; t++)
             {
@@ -686,6 +724,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     g_numberOfThreads = t;
                     scaleImage(g_imageWidth * g_scale, g_imageHeight * g_scale);
                     result += g_result;
+                    progress += 0.078125f;
+                    std::wstring progressString = std::to_wstring(progress) + L"%";
+                    SetWindowText(g_hwndTextProgress, progressString.c_str());
                 }
                 result /= 10;
                 myfile << result << ',';
@@ -701,6 +742,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     g_numberOfThreads = t;
                     scaleImage(g_imageWidth * g_scale, g_imageHeight * g_scale);
                     result += g_result;
+                    progress += 0.078125f;
+                    std::wstring progressString = std::to_wstring(progress) + L"%";
+                    SetWindowText(g_hwndTextProgress, progressString.c_str());
                 }
                 result /= 10;
                 myfile << result << ',';
