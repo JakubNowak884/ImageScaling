@@ -25,7 +25,7 @@
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-typedef int(__cdecl* MYPROC)(byte* pixels, byte* newPixels, int oldWidth, int newWidth, double x_ratio, double y_ratio, int partSize, int totalSize);
+typedef int(__cdecl* MYPROC)(byte* pixels, byte* newPixels, int oldWidth, int newWidth, float x_ratio, float y_ratio, int partSize, int totalSize);
 
 //_g stands for global variables
 
@@ -59,7 +59,7 @@ enum class TypeOfDLL {ASM, C};
 TypeOfDLL g_currentDLL = TypeOfDLL::ASM;
 
 int g_numberOfThreads = 1;
-int g_scale = 1;
+float g_scale = 10;
 
 std::wstring g_imageFile;
 
@@ -69,6 +69,8 @@ unsigned int g_imageHeight;
 unsigned int g_imageBytesPerPixel;
 
 double g_result = 0.0;
+
+bool draw = false;
 
 void OnSize(HWND hwnd, UINT flag, int width, int height)
 {
@@ -151,8 +153,7 @@ void WriteImage(const char* fileName, byte* pixels, unsigned int width, unsigned
 
 void readImage()
 {
-    if (g_pixels != nullptr)
-        delete[] g_pixels;
+    //delete[] g_pixels;
 
     FILE* imageFile = _wfopen(g_imageFile.c_str(), L"rb");
     unsigned int dataOffset;
@@ -169,7 +170,7 @@ void readImage()
 
     unsigned int unpaddedRowSize = g_imageWidth * g_imageBytesPerPixel;
     unsigned int totalSize = unpaddedRowSize * g_imageHeight;
-    g_pixels = new byte[totalSize];
+    g_pixels = new BYTE[totalSize + 24];
 
     fseek(imageFile, dataOffset, SEEK_SET);
 
@@ -193,9 +194,9 @@ void scaleImage(unsigned int newWidth, unsigned int newHeight)
 
     std::wstring nameOfDLL;
 
-    BYTE* newPixels = new BYTE[g_imageBytesPerPixel * newWidth * newHeight];
-    double x_ratio = g_imageWidth / (double)newWidth;
-    double y_ratio = g_imageHeight / (double)newHeight;
+    BYTE* newPixels = new BYTE[g_imageBytesPerPixel * newWidth * newHeight + 12];
+    float x_ratio = g_imageWidth / (float)newWidth;
+    float y_ratio = g_imageHeight / (float)newHeight;
 
     unsigned int oldUnpaddedRowSize = g_imageWidth * g_imageBytesPerPixel;
     unsigned int unpaddedRowSize = newWidth * g_imageBytesPerPixel;
@@ -273,7 +274,7 @@ void scaleImage(unsigned int newWidth, unsigned int newHeight)
     if (!fRunTimeLinkSuccess)
         ::MessageBox(NULL, L"Nie uda³o siê za³adowaæ DLL", L"Error", MB_OK);
 
-    WriteImage("output.bmp", newPixels, newWidth, newHeight);
+    //WriteImage("output.bmp", newPixels, newWidth, newHeight);
     delete[] newPixels;
 }
 
@@ -311,10 +312,10 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
         L"STATIC",  // Predefined class; Unicode assumed 
         NULL,
         WS_CHILD | WS_VISIBLE | WS_BORDER,
-        880,
+        875,
         0,
         325,
-        800,
+        805,
         hwnd,
         NULL,
         hInstance,
@@ -532,18 +533,18 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_  HINSTANCE hPrevInstance,_
 
     SendMessage(g_hwndTrackbarScale, TBM_SETRANGE,
         (WPARAM)TRUE,                   // redraw flag 
-        (LPARAM)MAKELONG(1, 4));  // min. & max. positions
+        (LPARAM)MAKELONG(10, 40));  // min. & max. positions
 
     SendMessage(g_hwndTrackbarScale, TBM_SETPAGESIZE,
-        0, (LPARAM)4);                  // new page size 
+        0, (LPARAM)40);                  // new page size 
 
     SendMessage(g_hwndTrackbarScale, TBM_SETSEL,
         (WPARAM)FALSE,                  // redraw flag 
-        (LPARAM)MAKELONG(1, 4));
+        (LPARAM)MAKELONG(10, 40));
 
     SendMessage(g_hwndTrackbarScale, TBM_SETPOS,
         (WPARAM)TRUE,                   // redraw flag 
-        (LPARAM)1);
+        (LPARAM)10);
 
     g_hwndButtonScale = CreateWindowEx(
         0,
@@ -687,10 +688,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 GetWindowTextW(g_hwndEnterTextFile, buffer, length + 1);
                 g_imageFile = buffer;
                 g_imageFile += L".bmp";
-                //RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
-                LPCWSTR imageFile = g_imageFile.c_str();
-                readImage();
-                g_imageFile.clear();
+                if (_wfopen(g_imageFile.c_str(), L"rb"))
+                {
+                    LPCWSTR imageFile = g_imageFile.c_str();
+                    std::wstring fileString = L"Aktualnie przetwarzany plik .bmp: " + g_imageFile;
+                    SetWindowText(g_hwndTextCurrentFile, fileString.c_str());
+                    readImage();
+                    g_imageFile.clear();
+                }
+                else
+                {
+                    ::MessageBox(NULL, L"B³¹d wczytywania pliku", L"Error", MB_OK);
+                }
             }
             else
             {
@@ -698,6 +707,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             SetWindowText(g_hwndEnterTextFile, NULL);
             GlobalFree(buffer);
+        }
+        else if ((HWND)lParam == g_hwndButtonShowCurrentFile)
+        {
+            draw = true;
+            RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
         }
         else if ((HWND)lParam == g_hwndButtonScale)
         {
@@ -715,6 +729,14 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             g_currentDLL = TypeOfDLL::ASM;
             float progress = 0.0f;
+
+            myfile << " ,";
+            for (int t = 1; t <= 64; t++)
+            {
+                myfile << t << ',';
+            }
+            myfile << '\n';
+            myfile << "ASM,";
             
             for (int t = 1; t <= 64; t++)
             {
@@ -733,6 +755,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
            
             myfile << '\n';
+            myfile << "C,";
             g_currentDLL = TypeOfDLL::C;
             for (int t = 1; t <= 64; t++)
             {
@@ -781,6 +804,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             case TB_ENDTRACK:
                 dwPos = SendMessage(g_hwndTrackbarScale, TBM_GETPOS, 0, 0);
                 g_scale = (int)dwPos;
+                g_scale /= 10;
                 scaleText = L"Powiêkszenie obrazu x" + std::to_wstring(g_scale);
                 SetWindowText(g_hwndTextScale, scaleText.c_str());
                 break;
@@ -794,9 +818,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_PAINT:
         PAINTSTRUCT ps;
         hdc = BeginPaint(hwnd, &ps);
-        if (!g_imageFile.empty())
+        if (draw)
         {
             LoadAndBlitBitmap(hdc, SRCCOPY);
+            draw = false;
         }
         EndPaint(hwnd, &ps);
         break;
