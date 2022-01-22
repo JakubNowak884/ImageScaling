@@ -1,4 +1,25 @@
+;Interpolacja obrazu metod¹ "najbli¿szego s¹siada"
+;Algorytm polega na wyliczaniu wspó³rzêdnych piksela, który ma zostaæ skopiowany z oryginalnego obrazu w kolejne miejsce nowego obrazu
+;Jakub Nowak, AEI Gliwice, informatyka, semestr V, data wykonania: 11.01.2022 r.
+;aktualna wersja 1.0 - skomentowanie kodu i drobne usprawnienia
+;wersja 0.9 - usprawnienie czytania z pamiêci (czytanie po 4 bajty)
+;wersja 0.5 - dodanie instrukcji wektorowych
+;wersja 0.1 - implementacja algorytmu na standardowych rejestrach
+
 .code
+
+;procedura scaleImage
+;powiêksza obrazy o liczby ca³kowite lub nieca³kowite wiêksze lub równe 1
+;pixels - adres pocz¹tku tablicy zawieraj¹cej bajty RGB wejœciowego obrazu
+;newPixels - adres pocz¹tku tablicy zawieraj¹cej bajty RGB wyjœciowego obrazu
+;oldWidth - szerokoœæ wejœciowego obrazu
+;newWidth - szerokoœæ wyjœciowego obrazu
+;x_ratio - stosunek szerokoœci wejœciowego obrazu do szerokoœci wyjœciowego (zakres od 0 do 1)
+;y_ratio - stosunek wysokoœci wejœciowego obrazu do wysokoœci wyjœciowego (zakres od 0 do 1)
+;partSize - iloœæ bajtów jakie ma przetworzyæ dany w¹tek
+;totalSize - bajt od którego dany w¹tek ma zacz¹æ przetwarzania
+;znacznik ZR(zero flag) zmienia wartoœæ na 1
+;znaczik PE(parity flag) zmienia wartoœæ na 1
 
 scaleImage proc
 
@@ -28,7 +49,6 @@ scaleImage proc
  shufps xmm1, xmm1, 0; vector of four floats y_ratio value in xmm1 register
 
  ;four three values in xmm5
- xor edx, edx;
  xor ebx, ebx; set ebx to zero
  mov ebx, 3; three value in ebx
  cvtsi2ss xmm5, ebx; put value from ebx(3) to xmm5 register as float
@@ -85,46 +105,19 @@ scaleImage proc
  xor R15D, R15D; set R15D to zero
 
  ;calculates modulo (currentSize % (newWidth / 3))
-; MODULO_LOOP:
+ MODULO_LOOP:
 
-; PSRLDQ xmm3, 4; shift right 4 bytes of xmm3 register to get a 4 bytes space to insert another value as last 4 bytes
-; xor edx, edx; set edx to zero for remaider of division
-; cvttss2si eax, xmm4; put value from xmm4(currentSize) to eax register as integer
-; PSRLDQ xmm4, 4; shift right 4 bytes of xmm4 register to get access to next currentSize value
-; div R9D; currentSize / (newWidth / 3)
-; cvtsi2ss xmm7, edx; put remainder from divison to xmm3 register as float
-; insertps xmm3, xmm7, 48; put reaminder as last 4 bytes of xmm3 register
- 
- ;add R15D, 1; add 1 to modulo loop counter
- ;cmp R15D, 4; check if four iterations of read loop has been passed
- ;JNE MODULO_LOOP; if it isn't fourth iteration jump and the start of modulo loop
-
+ PSRLDQ xmm3, 4; shift right 4 bytes of xmm3 register to get a 4 bytes space to insert another value as last 4 bytes
  xor edx, edx; set edx to zero for remaider of division
  cvttss2si eax, xmm4; put value from xmm4(currentSize) to eax register as integer
- div R9D; currentSize / (newWidth / 3)
- cvtsi2ss xmm7, edx; put remainder from divison to xmm3 register as float
- insertps xmm3, xmm7, 0; put reaminder as last 4 bytes of xmm3 register
-
- xor edx, edx; set edx to zero for remaider of division
  PSRLDQ xmm4, 4; shift right 4 bytes of xmm4 register to get access to next currentSize value
- cvttss2si eax, xmm4; put value from xmm4(currentSize) to eax register as integer
  div R9D; currentSize / (newWidth / 3)
- cvtsi2ss xmm7, edx; put remainder from divison to xmm3 register as float
- insertps xmm3, xmm7, 16; put reaminder as last 4 bytes of xmm3 register
-
- PSRLDQ xmm4, 4; shift right 4 bytes of xmm4 register to get access to next currentSize value
- xor edx, edx; set edx to zero for remaider of division
- cvttss2si eax, xmm4; put value from xmm4(currentSize) to eax register as integer
- div R9D; currentSize / (newWidth / 3)
- cvtsi2ss xmm7, edx; put remainder from divison to xmm3 register as float
- insertps xmm3, xmm7, 32; put reaminder as last 4 bytes of xmm3 register
-
- PSRLDQ xmm4, 4; shift right 4 bytes of xmm4 register to get access to next currentSize value
- xor edx, edx; set edx to zero for remaider of division
- cvttss2si eax, xmm4; put value from xmm4(currentSize) to eax register as integer
- div R9D; currentSize / (newWidth / 3)
- cvtsi2ss xmm7, edx; put remainder from divison to xmm3 register as float
+ cvtsi2ss xmm7, edx; put remainder from divison to xmm7 register as float
  insertps xmm3, xmm7, 48; put reaminder as last 4 bytes of xmm3 register
+ 
+ add R15D, 1; add 1 to modulo loop counter
+ cmp R15D, 4; check if four iterations of modulo loop has been passed
+ JNE MODULO_LOOP; if it isn't fourth iteration jump and the start of modulo loop
 
  ;px = floor(column * x_ratio);
  ;next four px in xmm3
@@ -146,7 +139,6 @@ scaleImage proc
 
  mov R14, R13; move value from R13(totalSize) to R14 register
  add R14, R11; addition of value from R14(totalSize) and R11(beggining of newPixels array)
- add R14, rcx; addition of value from R14(totalSize + beggining of newPixels array) and rcx(counter for main loop)
 
  ;counter for READ_LOOP
  xor R15D, R15D; set R15D to zero
@@ -156,13 +148,11 @@ scaleImage proc
 
  cvttss2si rdx, xmm2; put value from xmm2(position of pixel that will be copied) to rdx register as integer
  PSRLDQ xmm2, 4; shift right 4 bytes of xmm2 register to get access to next postion of pixel
- add rdx, r10; addition of register r10(beggining of pixels array) to rdx
- mov eax, DWORD PTR [rdx]; move pixel from pixel array(last one is B value from next pixel and will be replaced in next iteration) to eax
- mov DWORD PTR [R14], eax; move pixel from eax to newPixel arrray
- add R14, 3; add 3 to R14(counter + beggining of newPixels array)
+ mov eax, DWORD PTR [R10 + rdx]; move pixel from pixel array(last one is B value from next pixel and will be replaced in next iteration) to eax
+ mov DWORD PTR [R14 + rcx], eax; move pixel from eax to newPixel arrray
  
  add ecx, 3; add 3 to counter
- cmp ecx, R12D; check if counter is equal to  R12(partSize)
+ cmp ecx, R12D; check if counter is equal to R12(partSize)
  JE END_OF_LOOP; if equal jump to end of main loop
  
  add R15D, 1; add 1 to read loop counter

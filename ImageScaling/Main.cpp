@@ -274,7 +274,7 @@ void scaleImage(unsigned int newWidth, unsigned int newHeight)
     if (!fRunTimeLinkSuccess)
         ::MessageBox(NULL, L"Nie uda³o siê za³adowaæ DLL", L"Error", MB_OK);
 
-    //WriteImage("output.bmp", newPixels, newWidth, newHeight);
+    WriteImage("output.bmp", newPixels, newWidth, newHeight);
     delete[] newPixels;
 }
 
