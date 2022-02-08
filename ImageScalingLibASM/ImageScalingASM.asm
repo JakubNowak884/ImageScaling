@@ -1,10 +1,10 @@
 ;Interpolacja obrazu metod¹ "najbli¿szego s¹siada"
 ;Algorytm polega na wyliczaniu wspó³rzêdnych piksela, który ma zostaæ skopiowany z oryginalnego obrazu w kolejne miejsce nowego obrazu
 ;Jakub Nowak, AEI Gliwice, informatyka, semestr V, data wykonania: 11.01.2022 r.
-;aktualna wersja 1.0 - skomentowanie kodu i drobne usprawnienia
-;wersja 0.9 - usprawnienie czytania z pamiêci (czytanie po 4 bajty)
-;wersja 0.5 - dodanie instrukcji wektorowych
-;wersja 0.1 - implementacja algorytmu na standardowych rejestrach
+;aktualna wersja 1.1 - usprawnienie czytania z pamiêci (czytanie po 4 bajty)
+;wersja 1.0 - skomentowanie kodu i drobne usprawnienia
+;wersja 0.9 - dodanie instrukcji wektorowych
+;wersja 0.8 - implementacja algorytmu na standardowych rejestrach
 
 .code
 
